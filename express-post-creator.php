@@ -36,71 +36,79 @@ final class Express_Post_Creator {
      */
     function EPC_ajax_init() {
 
-        //get this data from js
-        $post_title =  $_POST['postTitle'] ?? '';
-        $post_content = $_POST['postContent'] ?? '';
-        $author_name = $_POST['authorName'] ?? '';
-        $author_email = $_POST['authorEmail'] ?? '';
+        //Check Nonce Security
+        if( check_ajax_referer( 'ajax_nonce', 'nonceS' ) ) :
 
-        /**
-         * Creating a author
-         */
-        if( $author_name != '' && $author_email != '' ){
+            //get this data from js
+            $post_title = sanitize_text_field( $_POST['postTitle'] ) ?? '';
+            $post_content = sanitize_textarea_field( $_POST['postContent'] ) ?? '';
+            $author_name = sanitize_title( $_POST['authorName'] ) ?? '';
+            $author_email = is_email( sanitize_email( $_POST['authorEmail'] ) ) ?? '';
             
-            $author_user_name = preg_replace('/\s+/', '', $author_name); //remove white space from name
-            $author_user_email = $author_email;
-            $author_user_password = '123456';
+            /**
+             * Creating a author
+             */
+            if( $author_name != '' && $author_email != '' ){
+                
+                $author_user_name = preg_replace('/\s+/', '', $author_name); //remove white space from name
+                $author_user_email = $author_email;
+                $author_user_password = '123456';
 
-            if( ! username_exists( $author_user_name ) ){
-                // Create a new user
-                $new_author_id = wp_create_user( $author_user_name, $author_user_password, $author_user_email );
+                if( ! username_exists( $author_user_name ) ){
+                    // Create a new user
+                    $new_author_id = wp_create_user( $author_user_name, $author_user_password, $author_user_email );
 
-                if ( ! is_wp_error( $new_author_id ) ) {
+                    if ( ! is_wp_error( $new_author_id ) ) {
 
-                    // Assign a role to the new user
-                    $new_author = new WP_User( $new_author_id );
-                    $new_author->set_role( 'author' );
+                        // Assign a role to the new user
+                        $new_author = new WP_User( $new_author_id );
+                        $new_author->set_role( 'author' );
+                    }
+                }else{
+                    _e( 'Author user alredy exit', 'express-post-creator' );
                 }
-            }
-        }
-
-        /**
-         * Creating a post
-         */
-        if( $post_title != '' && $post_content != '' ) {
-            $author_id = isset( $new_author_id ) ? $new_author_id : 1;
-
-            $EPC_post = array(
-                'post_title'    => $post_title,
-                'post_content'  => $post_content,
-                'post_status'   => 'publish',
-                'post_author'   => $author_id,
-                'post_type'     => 'post'
-            );
-
-            $new_post_id = wp_insert_post( $EPC_post ); //creating new post and get post id 
-
-            //Sent mail 
-            if( $new_post_id ) {
-                $post_permalink = get_permalink( $new_post_id );
-
-                $user_email = $author_email;
-                $subject = "{$post_title} is published now";
-                $mail_content = "Your post is now live please see it form here {$post_permalink}";
-
-                // Send the email
-                wp_mail( $user_email, $subject, $mail_content );
-
-                $massage = 'Post Created Successfully Please check your inbox for getting Conformation mail and post link';
+            }else{
+                _e( 'To create author you have to entry valid name and email field', 'express-post-creator' );
             }
 
-        }else{
-            $massage = 'Please Fill up all field';
-        }
+            /**
+             * Creating a post
+             */
+            if( $post_title != '' && $post_content != '' ) {
+                $author_id = isset( $new_author_id ) ? $new_author_id : 1;
 
-        echo $massage;
+                $EPC_post = array(
+                    'post_title'    => $post_title,
+                    'post_content'  => $post_content,
+                    'post_status'   => 'publish',
+                    'post_author'   => $author_id,
+                    'post_type'     => 'post'
+                );
 
-        die();
+                $new_post_id = wp_insert_post( $EPC_post ); //creating new post and get post id 
+
+                //Sent mail 
+                if( $new_post_id ) {
+                    $post_permalink = get_permalink( $new_post_id );
+
+                    $user_email = $author_email;
+                    $subject = "{$post_title} is published now";
+                    $mail_content = "Your post is now live please see it form here {$post_permalink}";
+
+                    // Send the email
+                    wp_mail( $user_email, $subject, $mail_content );
+
+                    $massage = __( 'Post Created Successfully Please check your inbox for getting Conformation mail and post link', 'express-post-creator' );
+                }
+
+            }else{
+                $massage = __( 'Please Fill up all field', 'express-post-creator' );
+            }
+
+            echo $massage;
+            die();
+
+        endif;
     }
 
     /**
@@ -115,7 +123,7 @@ final class Express_Post_Creator {
             wp_enqueue_style( 'EPC-style-css', plugin_dir_url( __FILE__ ) . '/assets/css/style.css', null, time() );
 
             //load script
-            wp_enqueue_script( 'EPC-scipt-js', plugin_dir_url( __FILE__ ) . "/assets/js/script.js", ['jquery'], '0.0.1', true );
+            wp_enqueue_script( 'EPC-scipt-js', plugin_dir_url( __FILE__ ) . "/assets/js/script.js", ['jquery'], time(), true );
 
             //send wp ajax url
             $ajax_url = admin_url( 'admin-ajax.php' );
@@ -127,6 +135,8 @@ final class Express_Post_Creator {
      * Handle Main shortcode callback
      */
     function EPC_shortcode_init() {
+        //creating nonce field
+        $nonce_field = sprintf( '%s', wp_nonce_field( 'ajax_nonce' ) );
 
         $html_form = <<<EOD
         <form class='epc-from-wrapper'> 
@@ -141,6 +151,9 @@ final class Express_Post_Creator {
             </p>
             <p> 
                 <input type="email" id="epc-author-email" placeholder="Your Email" />
+            </p>
+            <p>
+                {$nonce_field}
             </p>
             <p> 
                 <button type="submit" id="epc-submit-button" >Create Post</button>
