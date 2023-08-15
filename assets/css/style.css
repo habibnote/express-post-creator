@@ -15,6 +15,9 @@
 }
 .epc-from-wrapper button{
     border: none;
+    padding: 10px 30px;
+    background-color: #28303d;
+    color:#d1e4dd;
 }
 .epc-from-wrapper button:hover{
     background-color: black !important;

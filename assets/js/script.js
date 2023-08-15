@@ -19,7 +19,6 @@
 
             }, function(data){
                 $('#show-massage').text(data);
-                // console.log(data);
             });
             
             return false;

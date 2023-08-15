@@ -26,15 +26,15 @@ final class Express_Post_Creator {
      * Main class constructor
      */
     private function __construct() {
-        add_action( 'wp_enqueue_scripts', [$this, 'ERC_load_assets'] );
-        add_action( 'wp_ajax_EPC_ajax_call', [$this, 'ERC_ajax_init'] );
+        add_action( 'wp_enqueue_scripts', [$this, 'EPC_load_assets'] );
+        add_action( 'wp_ajax_EPC_ajax_call', [$this, 'EPC_ajax_init'] );
         add_shortcode( 'ep_cretor', [$this, 'EPC_shortcode_init'] );
     }
 
     /**
      * Intialize Ajax Request
      */
-    function ERC_ajax_init() {
+    function EPC_ajax_init() {
 
         //get this data from js
         $post_title =  $_POST['postTitle'] ?? '';
@@ -60,7 +60,6 @@ final class Express_Post_Creator {
                     // Assign a role to the new user
                     $new_author = new WP_User( $new_author_id );
                     $new_author->set_role( 'author' );
-
                 }
             }
         }
@@ -79,7 +78,7 @@ final class Express_Post_Creator {
                 'post_type'     => 'post'
             );
 
-            $new_post_id = wp_insert_post( $EPC_post ); //creating post
+            $new_post_id = wp_insert_post( $EPC_post ); //creating new post and get post id 
 
             //Sent mail 
             if( $new_post_id ) {
@@ -92,16 +91,14 @@ final class Express_Post_Creator {
                 // Send the email
                 wp_mail( $user_email, $subject, $mail_content );
 
-                $massage = "Post Created Successfully & Chek you inbox for getting Conformation mail";
+                $massage = 'Post Created Successfully Please check your inbox for getting Conformation mail and post link';
             }
 
         }else{
-            $massage = "Please Fill up all field";
+            $massage = 'Please Fill up all field';
         }
 
         echo $massage;
-        
-        wp_insert_post( $wordpress_post );
 
         die();
     }
@@ -109,13 +106,18 @@ final class Express_Post_Creator {
     /**
      * Method for Load all plugin assets
      */
-    function ERC_load_assets() {
+    function EPC_load_assets() {
 
-        wp_enqueue_style( 'style-css', plugin_dir_url( __FILE__ ) . '/assets/css/style.css', null, time() );
+        
 
         if( ! is_admin() && is_single() ) {
+            //load style
+            wp_enqueue_style( 'EPC-style-css', plugin_dir_url( __FILE__ ) . '/assets/css/style.css', null, time() );
+
+            //load script
             wp_enqueue_script( 'EPC-scipt-js', plugin_dir_url( __FILE__ ) . "/assets/js/script.js", ['jquery'], '0.0.1', true );
 
+            //send wp ajax url
             $ajax_url = admin_url( 'admin-ajax.php' );
             wp_localize_script( 'EPC-scipt-js', 'urls', ['ajaxUrl' => $ajax_url] );
         }
